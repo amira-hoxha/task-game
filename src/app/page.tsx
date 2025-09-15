@@ -6,6 +6,7 @@ import { LevelUpModal } from "@/components/LevelUpModal";
 import { DailyMotivation } from "@/components/DailyMotivation";
 import { MilestoneModal } from "@/components/MilestoneModal";
 import { RotatingQuotes } from "@/components/RotatingQuotes";
+import { StreakRewardModal } from "@/components/StreakRewardModal";
 
 export default function Home() {
   return (
@@ -44,6 +45,7 @@ export default function Home() {
       </div>
       <LevelUpModal />
       <MilestoneModal />
+      <StreakRewardModal />
       <DailyMotivation />
     </div>
   );
