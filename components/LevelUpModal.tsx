@@ -20,7 +20,7 @@ export function LevelUpModal() {
   const [seenAtXP, setSeenAtXP] = useState(0)
   const [open, setOpen] = useState(false)
   const level = LEVELS.find(l => l.id === levelId)!
-  const gift = useMemo(() => GIFTS[Math.floor(Math.random() * GIFTS.length)], [levelId])
+  const gift = useMemo(() => GIFTS[Math.floor(Math.random() * GIFTS.length)], [])
 
   useEffect(() => {
     if (xp > seenAtXP) {

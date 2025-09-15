@@ -9,7 +9,7 @@ const QUOTES = [
   { text: 'Done is better than perfect.', emoji: '✨' },
   { text: 'Tiny steps beat zero steps.', emoji: '🐾' },
   { text: 'Two minutes now, momentum later.', emoji: '⏱️' },
-  { text: 'You don\'t need more time, just a tiny start.', emoji: '🚀' },
+  { text: 'You don\u2019t need more time, just a tiny start.', emoji: '🚀' },
   { text: 'Make it easy. Reduce friction. Begin.', emoji: '🧩' },
   { text: 'Progress > procrastination.', emoji: '🌱' },
 ]
@@ -46,7 +46,7 @@ export function DailyMotivation() {
             </div>
             <div className="text-xl font-semibold mb-1">Daily Boost</div>
             <div className="text-white/80 text-lg mb-4"><span className="mr-2">{quote.emoji}</span>{quote.text}</div>
-            <button className="btn w-full" onClick={close}>Let\'s go</button>
+            <button className="btn w-full" onClick={close}>Let2s go</button>
           </motion.div>
         </motion.div>
       )}

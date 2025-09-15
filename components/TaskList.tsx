@@ -2,17 +2,19 @@
 
 import { useState, useMemo } from 'react'
 import { useGame } from '@/lib/store'
-import { CheckCircle2, Trash2, Shuffle } from 'lucide-react'
+import { CheckCircle2, Trash2, Shuffle, Play, Pause, Check } from 'lucide-react'
+import confetti from 'canvas-confetti'
 import { motion, AnimatePresence } from 'framer-motion'
 import { xpForTask } from '@/lib/game'
 import clsx from 'clsx'
 
 export function TaskList() {
-  const { tasks, addTask, toggleTask, deleteTask, clearDone, focusMode, updateUrgency } = useGame()
+  const { tasks, addTask, toggleTask, deleteTask, clearDone, focusMode, updateUrgency, startTask, setTaskStatus, completeTask, toggleSublevel } = useGame()
   const [title, setTitle] = useState('')
   const [estimate, setEstimate] = useState(20)
   const [unit, setUnit] = useState<'min' | 'h'>('min')
   const [urgency, setUrgency] = useState(3)
+  const [clearedPulse, setClearedPulse] = useState(false)
 
   const pending = useMemo(() => tasks.filter(t => !t.done), [tasks])
   const done = useMemo(() => tasks.filter(t => t.done), [tasks])
@@ -38,8 +40,34 @@ export function TaskList() {
             <Shuffle className="w-4 h-4" />
             <span className="ml-2">Quick Win</span>
           </button>
-          <button className="btn bg-white/10 hover:bg-white/20" onClick={clearDone}>
-            Clear Done
+          <button
+            className={clsx('btn relative overflow-hidden bg-white/10 hover:bg-white/20')}
+            onClick={() => {
+              clearDone()
+              setClearedPulse(true)
+              // subtle confetti burst
+              confetti({ particleCount: 16, spread: 60, startVelocity: 20, gravity: 0.8, scalar: 0.8, ticks: 80, origin: { x: 0.85, y: 0.15 } })
+              setTimeout(() => setClearedPulse(false), 2000)
+            }}
+            aria-label="Clear Done"
+          >
+            <span className={clsx('transition-opacity', clearedPulse ? 'opacity-0' : 'opacity-100')}>Clear Done</span>
+            {clearedPulse && (
+              <>
+                <motion.span className="absolute inset-0 flex items-center justify-center"
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                >
+                  <Check className="w-4 h-4" />
+                </motion.span>
+                <motion.span
+                  className="absolute inset-0 rounded-lg ring-2 ring-green-400/60"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.2 }}
+                />
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -112,30 +140,44 @@ export function TaskList() {
                 id={`task-${t.id}`}
                 layout
                 initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-                className="p-3 rounded-lg bg-white/5 border border-white/10 flex items-center justify-between"
+                className="p-3 rounded-lg bg-white/5 border border-white/10"
               >
-                <div className="flex items-center gap-3">
-                  <button onClick={() => toggleTask(t.id)} className="text-white/60 hover:text-white">
-                    <CheckCircle2 />
-                  </button>
-                  <div className="font-medium">{t.title}</div>
+                {/* Row 1: title + actions */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <button onClick={() => toggleTask(t.id)} className="text-white/60 hover:text-white">
+                      <CheckCircle2 />
+                    </button>
+                    <div className="font-medium truncate pr-2">{t.title}</div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {t.status === 'progress' ? (
+                      <button title="Pause" onClick={() => setTaskStatus(t.id, 'todo')} className="rounded-md px-2 py-1 bg-brand-600/25 text-brand-200 hover:bg-brand-600/35"><Pause className="w-4 h-4" /></button>
+                    ) : (
+                      <button title="Start" onClick={() => startTask(t.id)} className="rounded-md px-2 py-1 text-white/70 hover:text-white hover:bg-white/10"><Play className="w-4 h-4" /></button>
+                    )}
+                    <button title="Done" onClick={() => completeTask(t.id)} className="rounded-md px-2 py-1 text-white/70 hover:text-white hover:bg-white/10"><Check className="w-4 h-4" /></button>
+                    <button onClick={() => deleteTask(t.id)} className="rounded-md px-2 py-1 text-white/50 hover:text-red-400 hover:bg-white/10"><Trash2 className="w-4 h-4" /></button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 text-sm text-white/70">
+
+                {/* Row 2: compact chips */}
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-white/70">
                   <span className="px-2 py-1 rounded bg-white/10">~{t.estimateMin}m</span>
-                  <label className="px-2 py-1 rounded bg-white/10 flex items-center gap-2">
-                    <span className="text-white/70">Urg</span>
-                    <select
-                      value={t.urgency}
-                      onChange={(e) => updateUrgency(t.id, parseInt(e.target.value))}
-                      className="bg-transparent outline-none border border-white/10 rounded px-1 py-0.5"
-                    >
+                  <label className="px-2 py-1 rounded bg-white/10 flex items-center gap-1">
+                    <span>Urg</span>
+                    <select value={t.urgency} onChange={(e) => updateUrgency(t.id, parseInt(e.target.value))} className="bg-transparent outline-none border border-white/10 rounded px-1 py-0.5">
                       {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
                     </select>
                   </label>
                   <span className="px-2 py-1 rounded bg-brand-600/30 text-brand-200">+{xp} XP</span>
-                  <button onClick={() => deleteTask(t.id)} className="text-white/50 hover:text-red-400">
-                    <Trash2 />
-                  </button>
+                  <div className="ml-auto flex items-center gap-1">
+                    {[0,1,2].map((i) => (
+                      <button key={i} title="Sub-milestone" onClick={() => toggleSublevel(t.id, i)} className={clsx('w-7 h-7 rounded-full border flex items-center justify-center', (t.subLevels ?? [false,false,false])[i] ? 'bg-brand-600 text-white border-brand-500' : 'bg-white/5 border-white/15 text-white/50 hover:text-white')}>
+                        {i === 0 ? '🪄' : i === 1 ? '⭐' : '🏁'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </motion.div>
             )

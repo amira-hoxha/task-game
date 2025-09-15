@@ -56,64 +56,67 @@ export function LevelPath() {
         <div className="shooting-star" style={{ left: 720, top: 30, animationDelay: '2.8s' }} />
       </div>
       <div className="font-semibold mb-2">Quest Map</div>
-      <svg viewBox="0 0 920 280" className="w-full h-[240px]">
-        {/* Base path with subtle glow */}
-        <path d={d} stroke="rgba(255,255,255,.10)" strokeWidth={12} fill="none" strokeLinecap="round" />
-        {/* Transparent path used to measure marker position */}
-        <path ref={pathRef} d={d} stroke="transparent" fill="none" />
-        <motion.path
-          d={d}
-          stroke="url(#grad)"
-          strokeWidth={10}
-          fill="none"
-          strokeLinecap="round"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: progress }}
-          transition={{ type: 'spring', stiffness: 60, damping: 20 }}
-        />
-        <defs>
-          <linearGradient id="grad" x1="0" x2="1">
-            <stop offset="0%" stopColor="#5B73FF" />
-            <stop offset="35%" stopColor="#7F96FF" />
-            <stop offset="65%" stopColor="#A6BAFF" />
-            <stop offset="100%" stopColor="#C8D6FF" />
-          </linearGradient>
-        </defs>
-
-        {nodes.map((n) => {
-          const Icon = n.lvl.icon
-          return (
-            <g key={n.lvl.id} transform={`translate(${n.x}, ${n.y})`}>
-              {n.active && n.lvl.id === levelId && (
-                <circle r={26} fill="none" stroke={n.lvl.color} strokeOpacity={0.25} className="animate-pulse" />
-              )}
-              <circle r={16} fill={n.active ? n.lvl.color : 'rgba(255,255,255,.08)'} stroke="white" strokeOpacity={0.12} />
-              <foreignObject x={-12} y={-12} width="24" height="24">
-                <div className="w-6 h-6 flex items-center justify-center">
-                  <Icon className={clsx('w-4 h-4', n.active ? 'text-black/80' : 'text-white/50')} />
-                </div>
-              </foreignObject>
-              <text x={0} y={36} textAnchor="middle" className="fill-white/70 text-[10px]">{n.lvl.name}</text>
-            </g>
-          )
-        })}
-
-        {/* Pulsing dot marker slightly offset forward */}
-        <g transform={`translate(${marker.x}, ${marker.y}) rotate(${marker.angle}) translate(10,0)`}>
-          <motion.circle
-            r={14}
+      <div className="relative">
+        <svg viewBox="0 0 920 280" className="w-full h-[240px]">
+          {/* Base path with subtle glow */}
+          <path d={d} stroke="rgba(255,255,255,.10)" strokeWidth={12} fill="none" strokeLinecap="round" />
+          {/* Transparent path used to measure marker position */}
+          <path ref={pathRef} d={d} stroke="transparent" fill="none" />
+          <motion.path
+            d={d}
+            stroke="url(#grad)"
+            strokeWidth={10}
             fill="none"
-            stroke="rgba(166,186,255,.7)"
-            strokeWidth={2}
-            initial={{ scale: 1, opacity: 0.65 }}
-            animate={{ scale: [1, 1.75], opacity: [0.65, 0] }}
-            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
+            strokeLinecap="round"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: progress }}
+            transition={{ type: 'spring', stiffness: 60, damping: 20 }}
           />
-          <circle r={9} fill="#C8D6FF" />
-        </g>
-      </svg>
-      <div className="absolute inset-0 pointer-events-none [mask-image:linear-gradient(to_bottom,black,transparent_96%)]" />
-      <div className="text-xs text-white/60">Fill the path by completing tasks to reach the next level.</div>
+          <defs>
+            <linearGradient id="grad" x1="0" x2="1">
+              <stop offset="0%" stopColor="#5B73FF" />
+              <stop offset="35%" stopColor="#7F96FF" />
+              <stop offset="65%" stopColor="#A6BAFF" />
+              <stop offset="100%" stopColor="#C8D6FF" />
+            </linearGradient>
+          </defs>
+
+          {nodes.map((n) => {
+            const Icon = n.lvl.icon
+            return (
+              <g key={n.lvl.id} transform={`translate(${n.x}, ${n.y})`}>
+                {n.active && n.lvl.id === levelId && (
+                  <circle r={26} fill="none" stroke={n.lvl.color} strokeOpacity={0.25} className="animate-pulse" />
+                )}
+                <circle r={16} fill={n.active ? n.lvl.color : 'rgba(255,255,255,.08)'} stroke="white" strokeOpacity={0.12} />
+                <foreignObject x={-12} y={-12} width="24" height="24">
+                  <div className="w-6 h-6 flex items-center justify-center">
+                    <Icon className={clsx('w-4 h-4', n.active ? 'text-black/80' : 'text-white/50')} />
+                  </div>
+                </foreignObject>
+                <text x={0} y={36} textAnchor="middle" className="fill-white/70 text-[10px]">{n.lvl.name}</text>
+              </g>
+            )
+          })}
+
+          {/* Pulsing dot marker slightly offset forward */}
+          <g transform={`translate(${marker.x}, ${marker.y}) rotate(${marker.angle}) translate(10,0)`}>
+            <motion.circle
+              r={14}
+              fill="none"
+              stroke="rgba(166,186,255,.7)"
+              strokeWidth={2}
+              initial={{ scale: 1, opacity: 0.65 }}
+              animate={{ scale: [1, 1.75], opacity: [0.65, 0] }}
+              transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
+            />
+            <circle r={9} fill="#C8D6FF" />
+          </g>
+        </svg>
+        {/* Mask only the svg area so caption below isn’t affected */}
+        <div className="pointer-events-none absolute inset-0 [mask-image:linear-gradient(to_bottom,black,transparent_96%)]" />
+      </div>
+      <div className="mt-3 text-xs text-white/60">Fill the path by completing tasks to reach the next level.</div>
     </div>
   )
 }
