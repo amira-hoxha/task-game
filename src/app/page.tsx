@@ -4,6 +4,8 @@ import { TaskList } from "@/components/TaskList";
 import { FocusTimer } from "@/components/FocusTimer";
 import { LevelUpModal } from "@/components/LevelUpModal";
 import { DailyMotivation } from "@/components/DailyMotivation";
+import { MilestoneModal } from "@/components/MilestoneModal";
+import { RotatingQuotes } from "@/components/RotatingQuotes";
 
 export default function Home() {
   return (
@@ -30,10 +32,18 @@ export default function Home() {
                 Complete tasks to earn XP and fill the path to the next level. Gifts and fun messages unlock with each level-up. Use Focus Mode sprints to channel urgency if you procrastinate actively.
               </div>
             </div>
+            <div className="hidden lg:block">
+              <RotatingQuotes />
+            </div>
           </div>
+        </div>
+        {/* Mobile: quotes under Sprint */}
+        <div className="lg:hidden space-y-6">
+          <RotatingQuotes />
         </div>
       </div>
       <LevelUpModal />
+      <MilestoneModal />
       <DailyMotivation />
     </div>
   );

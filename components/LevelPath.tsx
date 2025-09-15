@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { LEVELS } from '@/lib/game'
 import { useGame } from '@/lib/store'
@@ -25,6 +25,23 @@ export function LevelPath() {
     return { d, progress, nodes }
   }, [xp, levelId])
 
+  // Compute coordinates for a pulsing marker at the head of the progress path
+  const pathRef = useRef<SVGPathElement>(null)
+  const [marker, setMarker] = useState<{ x: number; y: number; angle: number }>({ x: 20, y: 260, angle: 0 })
+
+  useEffect(() => {
+    const el = pathRef.current
+    if (!el) return
+    try {
+      const total = el.getTotalLength()
+      const len = Math.max(0, Math.min(total, total * progress))
+      const p = el.getPointAtLength(len)
+      const prev = el.getPointAtLength(Math.max(0, len - 1))
+      const angle = Math.atan2(p.y - prev.y, p.x - prev.x) * 180 / Math.PI
+      setMarker({ x: p.x, y: p.y, angle })
+    } catch {}
+  }, [progress, d])
+
   return (
     <div className="card p-4 h-[340px] relative overflow-hidden">
       {/* Colorful animated background */}
@@ -42,6 +59,8 @@ export function LevelPath() {
       <svg viewBox="0 0 920 280" className="w-full h-[240px]">
         {/* Base path with subtle glow */}
         <path d={d} stroke="rgba(255,255,255,.10)" strokeWidth={12} fill="none" strokeLinecap="round" />
+        {/* Transparent path used to measure marker position */}
+        <path ref={pathRef} d={d} stroke="transparent" fill="none" />
         <motion.path
           d={d}
           stroke="url(#grad)"
@@ -78,6 +97,20 @@ export function LevelPath() {
             </g>
           )
         })}
+
+        {/* Pulsing dot marker slightly offset forward */}
+        <g transform={`translate(${marker.x}, ${marker.y}) rotate(${marker.angle}) translate(10,0)`}>
+          <motion.circle
+            r={14}
+            fill="none"
+            stroke="rgba(166,186,255,.7)"
+            strokeWidth={2}
+            initial={{ scale: 1, opacity: 0.65 }}
+            animate={{ scale: [1, 1.75], opacity: [0.65, 0] }}
+            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
+          />
+          <circle r={9} fill="#C8D6FF" />
+        </g>
       </svg>
       <div className="absolute inset-0 pointer-events-none [mask-image:linear-gradient(to_bottom,black,transparent_96%)]" />
       <div className="text-xs text-white/60">Fill the path by completing tasks to reach the next level.</div>

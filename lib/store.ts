@@ -8,9 +8,14 @@ export type Task = {
   id: string
   title: string
   done: boolean
+  status?: 'todo' | 'progress' | 'done'
   estimateMin: number
   urgency: number
   createdAt: number
+  startedAt?: number | null
+  finishedAt?: number | null
+  actualMin?: number | null
+  subLevels?: boolean[]
 }
 
 type State = {
@@ -23,12 +28,22 @@ type State = {
   sprintEndsAt: number | null
   focusMode: boolean
   quoteSeenDay: string | null
+  celebratedMilestones: Record<string, boolean>
+  pendingStreakReward: number | null
+  streakRewardsClaimed: number[]
 
   addTask: (t: Omit<Task, 'id' | 'done' | 'createdAt'>) => void
   toggleTask: (id: string) => void
+  setTaskStatus: (id: string, status: 'todo' | 'progress' | 'done') => void
   deleteTask: (id: string) => void
   clearDone: () => void
   updateUrgency: (id: string, urgency: number) => void
+  startTask: (id: string) => void
+  completeTask: (id: string, actualMin?: number | null) => void
+  setActualMin: (id: string, minutes: number | null) => void
+  toggleSublevel: (id: string, index: number) => void
+  markMilestoneCelebrated: (id: string) => void
+  claimStreakReward: () => void
 
   startSprint: (minutes: number) => void
   stopSprint: () => void
@@ -59,6 +74,9 @@ export const useGame = create<State>()(persist((set, get) => ({
   sprintEndsAt: null,
   focusMode: false,
   quoteSeenDay: null,
+  celebratedMilestones: {},
+  pendingStreakReward: null,
+  streakRewardsClaimed: [],
 
   addTask: ({ title, estimateMin, urgency }) => set(s => ({
     tasks: [
@@ -69,21 +87,33 @@ export const useGame = create<State>()(persist((set, get) => ({
         estimateMin: Math.max(5, estimateMin),
         urgency: Math.min(5, Math.max(1, urgency)),
         done: false,
+        status: 'todo',
         createdAt: Date.now(),
+        subLevels: [false, false, false],
       },
     ],
   })),
 
   toggleTask: (id: string) => {
     const s = get()
-    const tasks = s.tasks.map(t => t.id === id ? { ...t, done: !t.done } : t)
-    const flipped = s.tasks.find(t => t.id === id)
+    const current = s.tasks.find(t => t.id === id)
+    const wasDone = current?.status ? current.status === 'done' : current?.done
+    s.setTaskStatus(id, wasDone ? 'todo' : 'done')
+  },
+
+  setTaskStatus: (id: string, status: 'todo' | 'progress' | 'done') => {
+    const s = get()
+    const task = s.tasks.find(t => t.id === id)
+    if (!task) return
+
+    const wasDone = task.status ? task.status === 'done' : task.done
+    const willBeDone = status === 'done'
     let addXP = 0
     let streak = s.streak
     let last = s.lastCompleteDay
 
-    if (flipped && !flipped.done) {
-      addXP = xpForTask(flipped.urgency, flipped.estimateMin)
+    if (!wasDone && willBeDone) {
+      addXP = xpForTask(task.urgency, task.estimateMin)
       const k = todayKey()
       if (s.lastCompleteDay === k) {
         streak = s.streak
@@ -98,15 +128,22 @@ export const useGame = create<State>()(persist((set, get) => ({
         }
         last = k
       }
-    } else if (flipped && flipped.done) {
-      addXP = -xpForTask(flipped.urgency, flipped.estimateMin)
+      // Set streak reward for special days if not already claimed
+      const milestones = [3, 7, 14, 21, 30]
+      const already = new Set(s.streakRewardsClaimed)
+      const reward = milestones.find(d => d === streak && !already.has(d))
+      if (reward) {
+        set({ pendingStreakReward: reward })
+      }
+    } else if (wasDone && !willBeDone) {
+      addXP = -xpForTask(task.urgency, task.estimateMin)
     }
 
     const newXP = Math.max(0, s.xp + addXP)
     const newLevel = computeLevel(newXP)
 
     set({
-      tasks,
+      tasks: s.tasks.map(t => t.id === id ? { ...t, status, done: status === 'done' } : t),
       xp: newXP,
       levelId: newLevel,
       streak,
@@ -115,11 +152,50 @@ export const useGame = create<State>()(persist((set, get) => ({
   },
 
   deleteTask: (id: string) => set(s => ({ tasks: s.tasks.filter(t => t.id !== id) })),
-  clearDone: () => set(s => ({ tasks: s.tasks.filter(t => !t.done) })),
+  clearDone: () => set(s => ({ tasks: s.tasks.filter(t => (t.status ? t.status !== 'done' : !t.done)) })),
   updateUrgency: (id: string, urgency: number) => set(s => ({
     tasks: s.tasks.map(t => t.id === id ? { ...t, urgency: Math.min(5, Math.max(1, urgency)) } : t)
   })),
 
+  startTask: (id: string) => {
+    const s = get()
+    set({
+      tasks: s.tasks.map(t => t.id === id ? { ...t, status: 'progress', done: false, startedAt: Date.now() } : t)
+    })
+  },
+
+  completeTask: (id: string, actualMin?: number | null) => {
+    const s = get()
+    const task = s.tasks.find(t => t.id === id)
+    if (!task) return
+    const minutes = actualMin ?? (task.startedAt ? Math.round((Date.now() - task.startedAt) / 60000) : undefined)
+    s.setTaskStatus(id, 'done')
+    set({
+      tasks: get().tasks.map(t => t.id === id ? { ...t, finishedAt: Date.now(), actualMin: minutes ?? t.actualMin ?? null } : t)
+    })
+  },
+
+  setActualMin: (id: string, minutes: number | null) => set(s => ({
+    tasks: s.tasks.map(t => t.id === id ? { ...t, actualMin: minutes } : t)
+  })),
+
+  toggleSublevel: (id: string, index: number) => set(s => ({
+    tasks: s.tasks.map(t => {
+      if (t.id !== id) return t
+      const arr = t.subLevels ? [...t.subLevels] : [false, false, false]
+      arr[index] = !arr[index]
+      return { ...t, subLevels: arr }
+    })
+  })),
+
+  markMilestoneCelebrated: (id: string) => set(s => ({
+    celebratedMilestones: { ...s.celebratedMilestones, [id]: true }
+  })),
+
+  claimStreakReward: () => set(s => ({
+    pendingStreakReward: null,
+    streakRewardsClaimed: s.pendingStreakReward ? [...s.streakRewardsClaimed, s.pendingStreakReward] : s.streakRewardsClaimed,
+  })),
   startSprint: (minutes: number) => set({
     sprintActive: true,
     sprintEndsAt: Date.now() + minutes * 60_000,

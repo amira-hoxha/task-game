@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Limit Tailwind's file scanning to TSX UI files only */
+@source "./**/*.tsx" "../../components/**/*.tsx";
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
