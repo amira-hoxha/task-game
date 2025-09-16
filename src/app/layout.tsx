@@ -24,7 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark" style={{ colorScheme: 'dark' }} suppressHydrationWarning>
+    <html lang="en" className="dark" style={{ colorScheme: 'dark' }}>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-[radial-gradient(1200px_800px_at_50%_-200px,rgba(91,115,255,.25)_0%,transparent_60%)]` }>
         <ThemeProvider>
           {children}
