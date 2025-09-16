@@ -231,10 +231,11 @@ export const useGame = create<State>()(persist((set, get) => ({
 }), {
   name: 'questlist-v1',
   version: 2,
-  migrate: (state: any, version) => {
-    if (version < 2 && state) {
+  migrate: (state: unknown, version: number) => {
+    const s = state as Partial<State> & { streak?: number }
+    if (version < 2 && s) {
       // Ensure streak never shows 0 after migration
-      return { ...state, streak: Math.max(1, state.streak ?? 1) }
+      return { ...s, streak: Math.max(1, s.streak ?? 1) }
     }
     return state as State
   },
