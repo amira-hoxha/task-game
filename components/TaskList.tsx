@@ -2,19 +2,20 @@
 
 import { useState, useMemo } from 'react'
 import { useGame } from '@/lib/store'
-import { CheckCircle2, Trash2, Shuffle, Play, Pause, Check } from 'lucide-react'
+import { CheckCircle2, Trash2, Shuffle, Plus, Check } from 'lucide-react'
 import confetti from 'canvas-confetti'
 import { motion, AnimatePresence } from 'framer-motion'
 import { xpForTask } from '@/lib/game'
 import clsx from 'clsx'
 
 export function TaskList() {
-  const { tasks, addTask, toggleTask, deleteTask, clearDone, focusMode, updateUrgency, startTask, setTaskStatus, completeTask, toggleSublevel } = useGame()
+  const { tasks, addTask, toggleTask, deleteTask, clearDone, focusMode, updateUrgency, toggleSublevel, addSubtask, toggleSubtask, deleteSubtask } = useGame()
   const [title, setTitle] = useState('')
   const [estimate, setEstimate] = useState(20)
   const [unit, setUnit] = useState<'min' | 'h'>('min')
   const [urgency, setUrgency] = useState(3)
   const [clearedPulse, setClearedPulse] = useState(false)
+  const [subInputs, setSubInputs] = useState<Record<string, string>>({})
 
   const pending = useMemo(() => tasks.filter(t => !t.done), [tasks])
   const done = useMemo(() => tasks.filter(t => t.done), [tasks])
@@ -142,23 +143,13 @@ export function TaskList() {
                 initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
                 className="p-3 rounded-lg bg-white/5 border border-white/10"
               >
-                {/* Row 1: title + actions */}
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <button onClick={() => toggleTask(t.id)} className="text-white/60 hover:text-white">
-                      <CheckCircle2 />
-                    </button>
-                    <div className="font-medium truncate pr-2">{t.title}</div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {t.status === 'progress' ? (
-                      <button title="Pause" onClick={() => setTaskStatus(t.id, 'todo')} className="rounded-md px-2 py-1 bg-brand-600/25 text-brand-200 hover:bg-brand-600/35"><Pause className="w-4 h-4" /></button>
-                    ) : (
-                      <button title="Start" onClick={() => startTask(t.id)} className="rounded-md px-2 py-1 text-white/70 hover:text-white hover:bg-white/10"><Play className="w-4 h-4" /></button>
-                    )}
-                    <button title="Done" onClick={() => completeTask(t.id)} className="rounded-md px-2 py-1 text-white/70 hover:text-white hover:bg-white/10"><Check className="w-4 h-4" /></button>
-                    <button onClick={() => deleteTask(t.id)} className="rounded-md px-2 py-1 text-white/50 hover:text-red-400 hover:bg-white/10"><Trash2 className="w-4 h-4" /></button>
-                  </div>
+                {/* Row 1: plain checklist */}
+                <div className="flex items-center gap-3 min-w-0">
+                  <button onClick={() => { if (!t.done) { confetti({ particleCount: 18, spread: 70, startVelocity: 28, gravity: 0.85, scalar: 0.8, ticks: 90, origin: { x: 0.2, y: 0.25 } }) } ; toggleTask(t.id) }} className="text-white/60 hover:text-white">
+                    <CheckCircle2 />
+                  </button>
+                  <div className="font-medium truncate pr-2">{t.title}</div>
+                  <button onClick={() => deleteTask(t.id)} className="ml-auto rounded-md px-2 py-1 text-white/50 hover:text-red-400 hover:bg-white/10"><Trash2 className="w-4 h-4" /></button>
                 </div>
 
                 {/* Row 2: compact chips */}
@@ -177,6 +168,52 @@ export function TaskList() {
                         {i === 0 ? '🪄' : i === 1 ? '⭐' : '🏁'}
                       </button>
                     ))}
+                  </div>
+                </div>
+                {/* Row 3: simple subtasks checklist */}
+                <div className="mt-3 rounded-lg bg-white/[.03] border border-white/10 p-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-xs text-white/60">Subtasks</div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        className="input h-8 w-48 md:w-64"
+                        placeholder="Add a subtask..."
+                        value={subInputs[t.id] ?? ''}
+                        onChange={(e) => setSubInputs(s => ({ ...s, [t.id]: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const v = (subInputs[t.id] ?? '').trim()
+                            if (v) { addSubtask(t.id, v); setSubInputs(s => ({ ...s, [t.id]: '' })) }
+                          }
+                        }}
+                      />
+                      <button
+                        className="text-white/70 hover:text-white flex items-center gap-1 text-xs"
+                        onClick={() => {
+                          const v = (subInputs[t.id] ?? '').trim()
+                          if (v) { addSubtask(t.id, v); setSubInputs(s => ({ ...s, [t.id]: '' })) }
+                        }}
+                        aria-label="Add subtask"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    {(t.subtasks ?? []).map(st => (
+                      <div key={st.id} className="flex items-center justify-between text-sm">
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" checked={st.done} onChange={() => toggleSubtask(t.id, st.id)} />
+                          <span className={clsx(st.done && 'line-through opacity-70')}>{st.title}</span>
+                        </label>
+                        <button className="text-white/40 hover:text-red-400" onClick={() => deleteSubtask(t.id, st.id)}>
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                    {(t.subtasks ?? []).length === 0 && (
+                      <div className="text-white/40 text-xs">No subtasks yet.</div>
+                    )}
                   </div>
                 </div>
               </motion.div>

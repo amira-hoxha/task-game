@@ -12,6 +12,7 @@ export function StatsBar() {
   const level = LEVELS.find(l => l.id === levelId)!
   const next = LEVELS.find(l => l.id === levelId + 1)
   const base = levelId === 1 ? 0 : LEVELS.find(l => l.id === levelId - 1)?.goalXP ?? 0
+  const displayStreak = Math.max(1, streak)
   const progress = useMemo(() => {
     const target = next?.goalXP ?? level.goalXP
     const span = (target - base) || 1
@@ -47,7 +48,7 @@ export function StatsBar() {
         <Flame className="text-orange-400" />
         <div>
           <div className="text-xs text-white/60">Streak</div>
-          <div className="text-lg font-semibold">{streak} day{streak === 1 ? '' : 's'}</div>
+          <div className="text-lg font-semibold">{displayStreak} day{displayStreak === 1 ? '' : 's'}</div>
         </div>
       </div>
     </div>

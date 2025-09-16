@@ -16,6 +16,7 @@ export type Task = {
   finishedAt?: number | null
   actualMin?: number | null
   subLevels?: boolean[]
+  subtasks?: { id: string; title: string; done: boolean }[]
 }
 
 type State = {
@@ -44,6 +45,9 @@ type State = {
   toggleSublevel: (id: string, index: number) => void
   markMilestoneCelebrated: (id: string) => void
   claimStreakReward: () => void
+  addSubtask: (taskId: string, title: string) => void
+  toggleSubtask: (taskId: string, subId: string) => void
+  deleteSubtask: (taskId: string, subId: string) => void
 
   startSprint: (minutes: number) => void
   stopSprint: () => void
@@ -68,7 +72,7 @@ export const useGame = create<State>()(persist((set, get) => ({
   tasks: [],
   xp: 0,
   levelId: 1,
-  streak: 0,
+  streak: 1,
   lastCompleteDay: null,
   sprintActive: false,
   sprintEndsAt: null,
@@ -90,6 +94,7 @@ export const useGame = create<State>()(persist((set, get) => ({
         status: 'todo',
         createdAt: Date.now(),
         subLevels: [false, false, false],
+        subtasks: [],
       },
     ],
   })),
@@ -116,13 +121,13 @@ export const useGame = create<State>()(persist((set, get) => ({
       addXP = xpForTask(task.urgency, task.estimateMin)
       const k = todayKey()
       if (s.lastCompleteDay === k) {
-        streak = s.streak
+        streak = Math.max(1, s.streak)
       } else {
         if (s.lastCompleteDay) {
           const prev = new Date(s.lastCompleteDay)
           const cur = new Date()
           const diff = Math.floor((cur.getTime() - prev.getTime()) / 86400000)
-          streak = diff === 1 ? s.streak + 1 : 1
+          streak = diff === 1 ? Math.max(1, s.streak) + 1 : 1
         } else {
           streak = 1
         }
@@ -196,6 +201,25 @@ export const useGame = create<State>()(persist((set, get) => ({
     pendingStreakReward: null,
     streakRewardsClaimed: s.pendingStreakReward ? [...s.streakRewardsClaimed, s.pendingStreakReward] : s.streakRewardsClaimed,
   })),
+
+  addSubtask: (taskId: string, title: string) => set(s => ({
+    tasks: s.tasks.map(t => t.id === taskId ? {
+      ...t,
+      subtasks: [...(t.subtasks ?? []), { id: crypto.randomUUID(), title, done: false }]
+    } : t)
+  })),
+  toggleSubtask: (taskId: string, subId: string) => set(s => ({
+    tasks: s.tasks.map(t => t.id === taskId ? {
+      ...t,
+      subtasks: (t.subtasks ?? []).map(st => st.id === subId ? { ...st, done: !st.done } : st)
+    } : t)
+  })),
+  deleteSubtask: (taskId: string, subId: string) => set(s => ({
+    tasks: s.tasks.map(t => t.id === taskId ? {
+      ...t,
+      subtasks: (t.subtasks ?? []).filter(st => st.id !== subId)
+    } : t)
+  })),
   startSprint: (minutes: number) => set({
     sprintActive: true,
     sprintEndsAt: Date.now() + minutes * 60_000,
@@ -204,4 +228,14 @@ export const useGame = create<State>()(persist((set, get) => ({
   stopSprint: () => set({ sprintActive: false, sprintEndsAt: null }),
   toggleFocusMode: () => set(s => ({ focusMode: !s.focusMode })),
   markQuoteSeenToday: () => set({ quoteSeenDay: todayKey() }),
-}), { name: 'questlist-v1' }))
+}), {
+  name: 'questlist-v1',
+  version: 2,
+  migrate: (state: any, version) => {
+    if (version < 2 && state) {
+      // Ensure streak never shows 0 after migration
+      return { ...state, streak: Math.max(1, state.streak ?? 1) }
+    }
+    return state as State
+  },
+}))
